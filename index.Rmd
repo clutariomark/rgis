@@ -1,0 +1,407 @@
+---
+title       : R as GIS
+subtitle    : Basic Spatial Analysis Using R
+author      : Mark Vincent Clutario
+job         : May 20, 2015
+framework   : io2012        # {io2012, html5slides, shower, dzslides, ...}
+highlighter : highlight.js  # {highlight.js, prettify, highlight}
+hitheme     : tomorrow      # 
+widgets     : []            # {mathjax, quiz, bootstrap}
+mode        : selfcontained # {standalone, draft}
+knit        : slidify::knit2slides
+---
+
+## Geographic Information System
+
+A GIS or Geographic Information System is defined as an integrated collection of computer software and data used to view and manage information about geographic places, analyze spatial relationships, and model spatial processes. A GIS provides a framework for gathering and organizing spatial data and related information so that it can be displayed and analyzed.
+
+<iframe src='gis.gif' width=800px height=spx>
+</iframe> 
+
+---
+
+## Packages
+
+Packages used in spatial analysis:
+```{r  echo=FALSE}
+## Load libraries needed
+library(rgdal)
+library(rgeos)
+library(maptools)
+library(ggplot2)
+```
+
+> 1. rgdal - translator library for raster and vector formats
+> 2. rgeos - for spatial operations
+> 3. maptools - for data handling
+> 4. ggplot2 - plotting library
+
+
+---
+
+## Load spatial data into R
+
+From the maptools package:
+
+1. readShapePoints
+2. readShapeLines
+3. readShapePoly
+
+
+---
+
+## Load spatial data into R
+# Polygons
+```{r message=FALSE}
+# SPATIALPOLYGONSDATAFRAME
+provinces <- readShapePoly("PHL_provinces.shp", IDvar="id")
+```
+
+```{r echo=FALSE, fig.width=6}
+# Plot in ggplot
+MAP <- ggplot() + 
+  geom_polygon(data=provinces.f, mapping=aes(x=long, y=lat, group=group, fill=POPNO)) + coord_equal() +
+  labs(x = "Longitude", y = "Latitude")
+MAP
+```
+
+---
+
+## Load spatial data into R
+# Points
+```{r message=FALSE}
+# SPATIALPOINTSDATAFRAME
+trackpoints <- read.csv("track.csv", header = T)
+coordinates(trackpoints) <- c("lng.00", "lat.00")
+```
+```{r echo=FALSE, fig.width=14}
+# plot points in ggplot
+MAP <- ggplot() + 
+  geom_point(data=trackpoints@data, mapping=aes(x=trackpoints@coords[,1], y=trackpoints@coords[,2], colour=windspeed.KT..00)) + coord_equal() +
+  labs(x = "Longitude", y = "Latitude")
+MAP
+```
+
+---
+
+## Load spatial data into R
+# Lines
+```{r message=FALSE}
+# SPATIALLINESDATAFRAME
+# convert SpatialPointsDataFrame to a list of line class
+x <- lapply(split(trackpoints, trackpoints$ID), 
+            function(x) Lines(list(Line(coordinates(x))), x$ID[1L]))
+
+# convert list of line class to SpatialLines
+tracklines <- SpatialLines(x)
+data <- data.frame(id = unique(trackpoints$ID))
+rownames(data) <- data$ID
+
+# convert SpatialLines to SpatialLinesDataFrame
+tracklines <- SpatialLinesDataFrame(tracklines, data)
+
+# SPATIALLINES
+spatiallines <- SpatialLines(list(Lines(list(Line(coordinates(trackpoints))), "1")))
+```
+
+---
+
+## Load spatial data into R
+# Lines
+
+```{r echo=FALSE, fig.width=14}
+# plot lines in ggplot2
+tracklines.f <- fortify(tracklines, CM="id")
+
+# Merge data from points to lines
+tracklines.f <- merge(tracklines.f, trackpoints@data, by.x="id", by.y="ID")
+MAP <- ggplot() + 
+  geom_line(data=tracklines.f, mapping=aes(x=long, y=lat, colour=windspeed.KT..00)) +  coord_equal() +
+  labs(x = "Longitude", y = "Latitude")
+MAP
+```
+
+---
+
+## Coordinate Reference System
+# WGS 84 - World Geodetic System 1984
+ - Latitude/Longitude
+ - EPSG 4326
+
+<iframe src='wgs84.gif' width=800px height=250px>
+</iframe>
+
+---
+
+## Coordinate Reference System
+# UTM - Universal Transverse Mercator
+ - units in meters
+ - EPSG 32651
+
+<iframe src='UTMzones.jpg' width=800px height=250px>
+</iframe>
+
+---
+
+## Coordinate Reference System
+# Setting a coordinate reference system
+```{r message=FALSE}
+# Select Coordinate Reference System
+UTM51N <- CRS("+init=epsg:32651") # UTM Zone 51 N
+WGS84 <- CRS("+init=epsg:4326") # LatLong WGS84
+```
+```{r message=FALSE, results='hide'}
+CRS("+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 
+     +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m 
+     +nadgrids=@null +wktext  +no_defs")
+```
+
+---
+
+## Coordinate Reference System
+# Set Coordinate Reference System
+```{r message=FALSE}
+# Set CRS on provinces spatial data
+proj4string(provinces) <- WGS84
+
+# Fortify Lines and Polygons for ggplot2
+provinces.f <- fortify(provinces, CM="ID")
+
+# Merge data from polygons to polygons data
+provinces.f <- merge(provinces.f, provinces@data, by.x="id", by.y="id")
+```
+
+```{r echo=FALSE}
+proj4string(trackpoints) <- WGS84
+proj4string(tracklines) <- WGS84
+proj4string(spatiallines) <- WGS84
+```
+
+---
+
+## Coordinate Reference System
+
+# Plot polygons with WGS84 CRS
+```{r echo=FALSE, fig.width=14}
+MAP_WGS <- ggplot() + 
+  geom_polygon(data=provinces.f, mapping=aes(x=long, y=lat, group=group, fill=POPNO)) + coord_equal() +
+  labs(x = "Longitude", y = "Latitude")
+MAP_WGS
+```
+
+---
+
+## Projections
+<iframe src='map-projections.jpg' width=800px height=250px>
+</iframe>
+
+---
+
+## Projections
+# Project from Lat/Long (WGS84) to Mercator (UTM-51N)
+```{r message=FALSE}
+# Transform Map Projections
+provinces_UTM <- spTransform(provinces, UTM51N)
+provinces_UTM.f <- fortify(provinces_UTM, CM="ID")
+provinces_UTM.f <- merge(provinces_UTM.f, provinces_UTM@data, by.x="id", by.y="id")
+```
+
+```{r echo=FALSE}
+tracklines_UTM <- spTransform(tracklines, UTM51N)
+trackpoints_UTM <- spTransform(trackpoints, UTM51N)
+trackpoints_UTM$lng <- coordinates(trackpoints_UTM)[,1]
+trackpoints_UTM$lat <- coordinates(trackpoints_UTM)[,2]
+spatiallines_UTM <- spTransform(spatiallines, UTM51N)
+tracklines_UTM.f <- fortify(tracklines_UTM, CM="id")
+tracklines_UTM.f <- merge(tracklines_UTM.f, trackpoints_UTM@data, by.x="id", by.y="ID")
+```
+
+---
+
+## Projections
+
+# Plot polygons with UTM Zone 51 N CRS
+```{r echo=FALSE, fig.width=14}
+MAP_UTM <- ggplot() + 
+  geom_polygon(data=provinces_UTM.f, mapping=aes(x=long, y=lat, group=group, fill=POPNO)) + coord_equal() +
+  labs(x = "Eastings (m)", y = "Northings (m)")
+MAP_UTM
+```
+
+---
+
+## Area Calculation
+```{r message=FALSE}
+# Get Area per Province
+provincearea <- gArea(provinces_UTM, byid=TRUE)
+provincearea <- data.frame(cbind(provincearea, names(provincearea)), row.names=NULL)
+names(provincearea) <- c("area", "id")
+head(provincearea)
+provinces_UTM@data <- merge(provinces_UTM@data, provincearea, by.x="id", by.y="id")
+provinces_UTM.f <- merge(provinces_UTM.f, provincearea, by.x="id", by.y="id")
+```
+
+---
+
+## Area Calculation
+```{r message=FALSE,warning=FALSE}
+provinces_UTM.f['POPDENSITY'] <-  as.numeric(provinces_UTM.f$POPNO)/
+  as.numeric(as.character(provinces_UTM@data$area))*1000000
+head(provinces_UTM.f, 1)
+```
+
+---
+
+## Buffer
+```{r message=FALSE}
+bufferlines <- gBuffer(spatiallines_UTM, width = 200000.0, joinStyle="ROUND")
+bufferlines.f <- fortify(bufferlines, CM="id")
+```
+```{r echo=FALSE, fig.width=12}
+MAP_BUFFER <- ggplot() + 
+  geom_line(data=tracklines_UTM.f, mapping=aes(x=long, y=lat)) + 
+  coord_equal() + 
+  labs(x = "Eastings (m)", y = "Northings (m)", fill = "Population (2010)")
+MAP_BUFFER
+```
+
+---
+
+## Buffer
+```{r message=FALSE}
+bufferlines <- gBuffer(spatiallines_UTM, width = 200000.0, joinStyle="ROUND")
+bufferlines.f <- fortify(bufferlines, CM="id")
+```
+```{r echo=FALSE, fig.width=12}
+MAP_BUFFER <- ggplot() + geom_polygon(data=bufferlines.f, mapping=aes(x=long, y=lat)) +
+  geom_line(data=tracklines_UTM.f, mapping=aes(x=long, y=lat)) + 
+  coord_equal() + 
+  labs(x = "Eastings (m)", y = "Northings (m)", fill = "Population (2010)")
+MAP_BUFFER
+```
+
+---
+
+## Intersections (gIntersects)
+```{r message=FALSE, error=FALSE}
+# INTERSECT LINES AND POLYGONS
+intersects <- gIntersects(spatiallines_UTM, provinces_UTM, byid=TRUE)
+intersectedprovinces <- provinces_UTM[intersects[,1],]
+intersectedprovinces.f <- fortify(intersectedprovinces, CM="id")
+intersectedprovinces.f <- merge(intersectedprovinces.f, 
+                                intersectedprovinces@data, by.x="id", by.y="id")
+```
+
+---
+
+## Intersections (gIntersects)
+```{r message=FALSE, error=FALSE}
+intersects[1:81,]
+```
+
+---
+
+## Intersections (gIntersects)
+# Plot Line-Polygon Intersection
+```{r echo=FALSE, fig.width=14}
+# PLOT INTERSECTED POLYGONS
+intersectmap <- ggplot() + geom_polygon(data=provinces_UTM.f, 
+                                        mapping=aes(x=long, y=lat, group=group, fill=POPNO)) +
+  geom_line(data=tracklines_UTM.f, mapping=aes(x=long, y=lat)) + 
+  coord_equal() + labs(x = "Eastings (m)", y = "Northings (m)", fill = "Population (2010)")
+intersectmap
+```
+
+---
+
+## Intersections (gIntersects)
+# Plot Line-Polygon Intersection
+```{r echo=FALSE, fig.width=14}
+# PLOT INTERSECTED POLYGONS
+intersectmap <- ggplot() + geom_polygon(data=intersectedprovinces.f, 
+                                        mapping=aes(x=long, y=lat, group=group, fill=POPNO)) +
+  geom_line(data=tracklines_UTM.f, mapping=aes(x=long, y=lat)) + 
+  coord_equal() + labs(x = "Eastings (m)", y = "Northings (m)", fill = "Population (2010)")
+intersectmap
+```
+
+---
+
+## Intersections (gIntersects)
+```{r message=FALSE}
+# INTERSECT POLYGONS AND POLYGONS
+intersects_200km <- gIntersects(bufferlines, provinces_UTM, byid=TRUE)
+intersectedprovinces_200km <- provinces_UTM[intersects_200km[,1],]
+intersectedprovinces_200km.f <- fortify(intersectedprovinces_200km, CM="id")
+intersectedprovinces_200km.f <- merge(intersectedprovinces_200km.f, 
+                                      intersectedprovinces_200km@data, by.x="id", by.y="id")
+
+```
+
+---
+
+## Intersections (gIntersection)
+```{r echo=FALSE}
+provinces_UTM@data$id <- as.character(provinces_UTM@data$id)
+```
+```{r message=FALSE, warning=FALSE, error=FALSE}
+intersection <- gIntersection(bufferlines, provinces_UTM, 
+                              byid=TRUE, id=row.names(provinces_UTM@data))
+ids <- getSpPPolygonsIDSlots(intersection)
+province_intersect <- provinces_UTM@data[row.names(provinces_UTM@data) %in% ids,]
+intersection.df <- SpatialPolygonsDataFrame(intersection, province_intersect)
+intersection.df$rowid <- row.names(intersection.df)
+intersection.f <- fortify(intersection.df, CM="id")
+intersection.f <- merge(intersection.f,intersection.df@data, by.x="id", by.y="rowid")
+```
+
+---
+
+## Intersections
+# Plot Polygon-Polygon Intersection
+```{r echo=FALSE, fig.width=14}
+# PLOT INTERSECTED POLYGONS
+intersectmap <- ggplot() + geom_polygon(data=provinces_UTM.f, 
+                                        mapping=aes(x=long, y=lat, group=group, fill=POPNO)) +
+  geom_polygon(data=bufferlines, mapping=aes(x=long, y=lat, alpha=0.4)) + 
+  coord_equal() + labs(x = "Eastings (m)", y = "Northings (m)", fill = "Population (2010)")
+intersectmap
+```
+
+---
+
+## Intersections (gIntersects)
+# Plot Polygon-Polygon Intersection 
+```{r echo=FALSE, fig.width=14}
+# PLOT INTERSECTED POLYGONS
+intersectmap_200km <- ggplot() + geom_polygon(data=intersectedprovinces_200km.f, 
+                                              mapping=aes(x=long, y=lat, group=group, fill=POPNO)) + 
+  geom_polygon(data=bufferlines, mapping=aes(x=long, y=lat, alpha=0.4)) + 
+  coord_equal() + labs(x = "Eastings (m)", y = "Northings (m)", fill = "Population(2010)")
+intersectmap_200km
+```
+
+---
+
+## Intersections (gIntersection)
+# Plot Polygon-Polygon Intersection 
+```{r echo=FALSE, fig.width=14}
+# PLOT INTERSECTED POLYGONS
+intersectmap_200km <- ggplot() + geom_polygon(data=intersection.f, 
+                                              mapping=aes(x=long, y=lat, group=group, fill=POPNO)) + 
+  geom_polygon(data=bufferlines, mapping=aes(x=long, y=lat, alpha=0.4)) + 
+  coord_equal() + labs(x = "Eastings (m)", y = "Northings (m)", fill = "Population(2010)")
+intersectmap_200km
+```
+
+---
+
+```{r echo=FALSE, fig.width=14}
+MAP_UTM <- ggplot() + geom_polygon(data=provinces_UTM.f, mapping=aes(x=long, y=lat, group=group, fill=POPNO)) +
+  geom_point(data=trackpoints_UTM@data, mapping=aes(x=lng, y=lat, colour=windspeed.KT..00)) +
+  geom_line(data=tracklines_UTM.f, mapping=aes(x=long, y=lat.x, colour=windspeed.KT..00)) +
+  scale_fill_gradient(low="black", high="red") + 
+  coord_equal() + ggtitle("Provincial Population (2010)") + 
+  labs(x = "Eastings (m)", y = "Northings (m)", fill = "Population (2010)")
+MAP_UTM
+```

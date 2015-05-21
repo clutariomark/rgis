@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>R as GIS</title>
+  <meta charset="utf-8">
+  <meta name="description" content="R as GIS">
+  <meta name="author" content="Mark Vincent Clutario">
+  <meta name="generator" content="slidify" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/default.css" media="all" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/phone.css" 
+    media="only screen and (max-device-width: 480px)" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/slidify.css" >
+  <link rel="stylesheet" href="libraries/highlighters/highlight.js/css/tomorrow.css" />
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->  <link rel=stylesheet href="./assets/css/ribbons.css"></link>
+
+  
+  <!-- Grab CDN jQuery, fall back to local if offline -->
+  <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.min.js"></script>
+  <script>window.jQuery || document.write('<script src="libraries/widgets/quiz/js/jquery.js"><\/script>')</script> 
+  <script data-main="libraries/frameworks/io2012/js/slides" 
+    src="libraries/frameworks/io2012/js/require-1.0.8.min.js">
+  </script>
+  
+  
+
+</head>
+<body style="opacity: 0">
+  <slides class="layout-widescreen">
+    
+    <!-- LOGO SLIDE -->
+        <slide class="title-slide segue nobackground">
+  <hgroup class="auto-fadein">
+    <h1>R as GIS</h1>
+    <h2>Basic Spatial Analysis Using R</h2>
+    <p>Mark Vincent Clutario<br/>May 20, 2015</p>
+  </hgroup>
+  <article></article>  
+</slide>
+    
+
+    <!-- SLIDES -->
+    <slide class="" id="slide-1" style="background:;">
+  <hgroup>
+    <h2>Geographic Information System</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>A GIS or Geographic Information System is defined as an integrated collection of computer software and data used to view and manage information about geographic places, analyze spatial relationships, and model spatial processes. A GIS provides a framework for gathering and organizing spatial data and related information so that it can be displayed and analyzed.</p>
+
+<iframe src='gis.gif' width=800px height=spx>
+</iframe> 
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-2" style="background:;">
+  <hgroup>
+    <h2>Packages</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>Packages used in spatial analysis:</p>
+
+<ol class = "build incremental">
+<li>rgdal - translator library for raster and vector formats</li>
+<li>rgeos - for spatial operations</li>
+<li>maptools - for data handling</li>
+<li>ggplot2 - plotting library</li>
+</ol>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-3" style="background:;">
+  <hgroup>
+    <h2>Load spatial data into R</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>From the maptools package:</p>
+
+<ol>
+<li>readShapePoints</li>
+<li>readShapeLines</li>
+<li>readShapePoly</li>
+</ol>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-4" style="background:;">
+  <hgroup>
+    <h2>Load spatial data into R</h2>
+  </hgroup>
+  <article data-timings="">
+    <h1>Polygons</h1>
+
+<pre><code class="r"># SPATIALPOLYGONSDATAFRAME
+provinces &lt;- readShapePoly(&quot;PHL_provinces.shp&quot;, IDvar=&quot;id&quot;)
+</code></pre>
+
+<p><img src="assets/fig/unnamed-chunk-3-1.png" alt="plot of chunk unnamed-chunk-3"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-5" style="background:;">
+  <hgroup>
+    <h2>Load spatial data into R</h2>
+  </hgroup>
+  <article data-timings="">
+    <h1>Points</h1>
+
+<pre><code class="r"># SPATIALPOINTSDATAFRAME
+trackpoints &lt;- read.csv(&quot;track.csv&quot;, header = T)
+coordinates(trackpoints) &lt;- c(&quot;lng.00&quot;, &quot;lat.00&quot;)
+</code></pre>
+
+<p><img src="assets/fig/unnamed-chunk-5-1.png" alt="plot of chunk unnamed-chunk-5"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-6" style="background:;">
+  <hgroup>
+    <h2>Load spatial data into R</h2>
+  </hgroup>
+  <article data-timings="">
+    <h1>Lines</h1>
+
+<pre><code class="r"># SPATIALLINESDATAFRAME
+# convert SpatialPointsDataFrame to a list of line class
+x &lt;- lapply(split(trackpoints, trackpoints$ID), 
+            function(x) Lines(list(Line(coordinates(x))), x$ID[1L]))
+
+# convert list of line class to SpatialLines
+tracklines &lt;- SpatialLines(x)
+data &lt;- data.frame(id = unique(trackpoints$ID))
+rownames(data) &lt;- data$ID
+
+# convert SpatialLines to SpatialLinesDataFrame
+tracklines &lt;- SpatialLinesDataFrame(tracklines, data)
+
+# SPATIALLINES
+spatiallines &lt;- SpatialLines(list(Lines(list(Line(coordinates(trackpoints))), &quot;1&quot;)))
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-7" style="background:;">
+  <hgroup>
+    <h2>Load spatial data into R</h2>
+  </hgroup>
+  <article data-timings="">
+    <h1>Lines</h1>
+
+<p><img src="assets/fig/unnamed-chunk-7-1.png" alt="plot of chunk unnamed-chunk-7"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-8" style="background:;">
+  <hgroup>
+    <h2>Coordinate Reference System</h2>
+  </hgroup>
+  <article data-timings="">
+    <h1>WGS 84 - World Geodetic System 1984</h1>
+
+<ul>
+<li>Latitude/Longitude</li>
+<li>EPSG 4326</li>
+</ul>
+
+<iframe src='wgs84.gif' width=800px height=250px>
+</iframe>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-9" style="background:;">
+  <hgroup>
+    <h2>Coordinate Reference System</h2>
+  </hgroup>
+  <article data-timings="">
+    <h1>UTM - Universal Transverse Mercator</h1>
+
+<ul>
+<li>units in meters</li>
+<li>EPSG 32651</li>
+</ul>
+
+<iframe src='UTMzones.jpg' width=800px height=250px>
+</iframe>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-10" style="background:;">
+  <hgroup>
+    <h2>Coordinate Reference System</h2>
+  </hgroup>
+  <article data-timings="">
+    <h1>Setting a coordinate reference system</h1>
+
+<pre><code class="r"># Select Coordinate Reference System
+UTM51N &lt;- CRS(&quot;+init=epsg:32651&quot;) # UTM Zone 51 N
+WGS84 &lt;- CRS(&quot;+init=epsg:4326&quot;) # LatLong WGS84
+</code></pre>
+
+<pre><code class="r">CRS(&quot;+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 
+     +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m 
+     +nadgrids=@null +wktext  +no_defs&quot;)
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-11" style="background:;">
+  <hgroup>
+    <h2>Coordinate Reference System</h2>
+  </hgroup>
+  <article data-timings="">
+    <h1>Set Coordinate Reference System</h1>
+
+<pre><code class="r"># Set CRS on provinces spatial data
+proj4string(provinces) &lt;- WGS84
+
+# Fortify Lines and Polygons for ggplot2
+provinces.f &lt;- fortify(provinces, CM=&quot;ID&quot;)
+
+# Merge data from polygons to polygons data
+provinces.f &lt;- merge(provinces.f, provinces@data, by.x=&quot;id&quot;, by.y=&quot;id&quot;)
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-12" style="background:;">
+  <hgroup>
+    <h2>Coordinate Reference System</h2>
+  </hgroup>
+  <article data-timings="">
+    <h1>Plot polygons with WGS84 CRS</h1>
+
+<p><img src="assets/fig/unnamed-chunk-12-1.png" alt="plot of chunk unnamed-chunk-12"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-13" style="background:;">
+  <hgroup>
+    <h2>Projections</h2>
+  </hgroup>
+  <article data-timings="">
+    <iframe src='map-projections.jpg' width=800px height=250px>
+</iframe>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-14" style="background:;">
+  <hgroup>
+    <h2>Projections</h2>
+  </hgroup>
+  <article data-timings="">
+    <h1>Project from Lat/Long (WGS84) to Mercator (UTM-51N)</h1>
+
+<pre><code class="r"># Transform Map Projections
+provinces_UTM &lt;- spTransform(provinces, UTM51N)
+provinces_UTM.f &lt;- fortify(provinces_UTM, CM=&quot;ID&quot;)
+provinces_UTM.f &lt;- merge(provinces_UTM.f, provinces_UTM@data, by.x=&quot;id&quot;, by.y=&quot;id&quot;)
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-15" style="background:;">
+  <hgroup>
+    <h2>Projections</h2>
+  </hgroup>
+  <article data-timings="">
+    <h1>Plot polygons with UTM Zone 51 N CRS</h1>
+
+<p><img src="assets/fig/unnamed-chunk-15-1.png" alt="plot of chunk unnamed-chunk-15"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-16" style="background:;">
+  <hgroup>
+    <h2>Area Calculation</h2>
+  </hgroup>
+  <article data-timings="">
+    <pre><code class="r"># Get Area per Province
+provincearea &lt;- gArea(provinces_UTM, byid=TRUE)
+provincearea &lt;- data.frame(cbind(provincearea, names(provincearea)), row.names=NULL)
+names(provincearea) &lt;- c(&quot;area&quot;, &quot;id&quot;)
+head(provincearea)
+</code></pre>
+
+<pre><code>##               area    id
+## 1 3973664475.49684 PH.AB
+## 2 1669886466.91593 PH.AK
+## 3 2509978898.45008 PH.AL
+## 4 2995592657.18506 PH.AN
+## 5 3914084734.25807 PH.AP
+## 6 2731900657.28037 PH.AQ
+</code></pre>
+
+<pre><code class="r">provinces_UTM@data &lt;- merge(provinces_UTM@data, provincearea, by.x=&quot;id&quot;, by.y=&quot;id&quot;)
+provinces_UTM.f &lt;- merge(provinces_UTM.f, provincearea, by.x=&quot;id&quot;, by.y=&quot;id&quot;)
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-17" style="background:;">
+  <hgroup>
+    <h2>Area Calculation</h2>
+  </hgroup>
+  <article data-timings="">
+    <pre><code class="r">provinces_UTM.f[&#39;POPDENSITY&#39;] &lt;-  as.numeric(provinces_UTM.f$POPNO)/
+  as.numeric(as.character(provinces_UTM@data$area))*1000000
+head(provinces_UTM.f, 1)
+</code></pre>
+
+<pre><code>##      id   long     lat order  hole piece   group PROVINCE HASC_1  POPNO
+## 1 PH.AB 284793 1986612     1 FALSE     1 PH.AB.1     Abra  PH.AB 234733
+##   REGION             area POPDENSITY
+## 1    CAR 3973664475.49684   59.07217
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-18" style="background:;">
+  <hgroup>
+    <h2>Buffer</h2>
+  </hgroup>
+  <article data-timings="">
+    <pre><code class="r">bufferlines &lt;- gBuffer(spatiallines_UTM, width = 200000.0, joinStyle=&quot;ROUND&quot;)
+bufferlines.f &lt;- fortify(bufferlines, CM=&quot;id&quot;)
+</code></pre>
+
+<p><img src="assets/fig/unnamed-chunk-19-1.png" alt="plot of chunk unnamed-chunk-19"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-19" style="background:;">
+  <hgroup>
+    <h2>Buffer</h2>
+  </hgroup>
+  <article data-timings="">
+    <pre><code class="r">bufferlines &lt;- gBuffer(spatiallines_UTM, width = 200000.0, joinStyle=&quot;ROUND&quot;)
+bufferlines.f &lt;- fortify(bufferlines, CM=&quot;id&quot;)
+</code></pre>
+
+<p><img src="assets/fig/unnamed-chunk-21-1.png" alt="plot of chunk unnamed-chunk-21"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-20" style="background:;">
+  <hgroup>
+    <h2>Intersections (gIntersects)</h2>
+  </hgroup>
+  <article data-timings="">
+    <pre><code class="r"># INTERSECT LINES AND POLYGONS
+intersects &lt;- gIntersects(spatiallines_UTM, provinces_UTM, byid=TRUE)
+intersectedprovinces &lt;- provinces_UTM[intersects[,1],]
+intersectedprovinces.f &lt;- fortify(intersectedprovinces, CM=&quot;id&quot;)
+intersectedprovinces.f &lt;- merge(intersectedprovinces.f, 
+                                intersectedprovinces@data, by.x=&quot;id&quot;, by.y=&quot;id&quot;)
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-21" style="background:;">
+  <hgroup>
+    <h2>Intersections (gIntersects)</h2>
+  </hgroup>
+  <article data-timings="">
+    <pre><code class="r">intersects[1:81,]
+</code></pre>
+
+<pre><code>## PH.AB PH.AK PH.AL PH.AN PH.AP PH.AQ PH.AS PH.AU PH.BA PH.BG PH.BI PH.BK 
+## FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE 
+## PH.BN PH.BO PH.BS PH.BT PH.BU PH.CB PH.CG PH.CL PH.CM PH.CN PH.CP PH.CS 
+## FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE 
+## PH.CT PH.CV PH.DI PH.DO PH.DS PH.DV PH.ES PH.GU PH.IB PH.IF PH.II PH.IN 
+## FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE 
+## PH.IS PH.KA PH.LE PH.LG PH.LN PH.LS PH.LU PH.MB PH.MC PH.MD PH.MG PH.MM 
+## FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE  TRUE FALSE FALSE FALSE 
+## PH.MN PH.MQ PH.MR PH.MT PH.NC PH.ND PH.NE PH.NR PH.NS PH.NV PH.PL PH.PM 
+## FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE 
+## PH.PN PH.QR PH.QZ PH.RI PH.RO PH.SC PH.SG PH.SK PH.SL PH.SM PH.SN PH.SQ 
+## FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE 
+## PH.SR PH.SS PH.SU PH.TR PH.TT PH.ZM PH.ZN PH.ZS PH.ZY 
+## FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-22" style="background:;">
+  <hgroup>
+    <h2>Intersections (gIntersects)</h2>
+  </hgroup>
+  <article data-timings="">
+    <h1>Plot Line-Polygon Intersection</h1>
+
+<p><img src="assets/fig/unnamed-chunk-24-1.png" alt="plot of chunk unnamed-chunk-24"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-23" style="background:;">
+  <hgroup>
+    <h2>Intersections (gIntersects)</h2>
+  </hgroup>
+  <article data-timings="">
+    <h1>Plot Line-Polygon Intersection</h1>
+
+<p><img src="assets/fig/unnamed-chunk-25-1.png" alt="plot of chunk unnamed-chunk-25"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-24" style="background:;">
+  <hgroup>
+    <h2>Intersections (gIntersects)</h2>
+  </hgroup>
+  <article data-timings="">
+    <pre><code class="r"># INTERSECT POLYGONS AND POLYGONS
+intersects_200km &lt;- gIntersects(bufferlines, provinces_UTM, byid=TRUE)
+intersectedprovinces_200km &lt;- provinces_UTM[intersects_200km[,1],]
+intersectedprovinces_200km.f &lt;- fortify(intersectedprovinces_200km, CM=&quot;id&quot;)
+intersectedprovinces_200km.f &lt;- merge(intersectedprovinces_200km.f, 
+                                      intersectedprovinces_200km@data, by.x=&quot;id&quot;, by.y=&quot;id&quot;)
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-25" style="background:;">
+  <hgroup>
+    <h2>Intersections (gIntersection)</h2>
+  </hgroup>
+  <article data-timings="">
+    <pre><code class="r">intersection &lt;- gIntersection(bufferlines, provinces_UTM, 
+                              byid=TRUE, id=row.names(provinces_UTM@data))
+ids &lt;- getSpPPolygonsIDSlots(intersection)
+province_intersect &lt;- provinces_UTM@data[row.names(provinces_UTM@data) %in% ids,]
+intersection.df &lt;- SpatialPolygonsDataFrame(intersection, province_intersect)
+intersection.df$rowid &lt;- row.names(intersection.df)
+intersection.f &lt;- fortify(intersection.df, CM=&quot;id&quot;)
+intersection.f &lt;- merge(intersection.f,intersection.df@data, by.x=&quot;id&quot;, by.y=&quot;rowid&quot;)
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-26" style="background:;">
+  <hgroup>
+    <h2>Intersections</h2>
+  </hgroup>
+  <article data-timings="">
+    <h1>Plot Polygon-Polygon Intersection</h1>
+
+<p><img src="assets/fig/unnamed-chunk-29-1.png" alt="plot of chunk unnamed-chunk-29"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-27" style="background:;">
+  <hgroup>
+    <h2>Intersections (gIntersects)</h2>
+  </hgroup>
+  <article data-timings="">
+    <h1>Plot Polygon-Polygon Intersection</h1>
+
+<p><img src="assets/fig/unnamed-chunk-30-1.png" alt="plot of chunk unnamed-chunk-30"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-28" style="background:;">
+  <hgroup>
+    <h2>Intersections (gIntersection)</h2>
+  </hgroup>
+  <article data-timings="">
+    <h1>Plot Polygon-Polygon Intersection</h1>
+
+<p><img src="assets/fig/unnamed-chunk-31-1.png" alt="plot of chunk unnamed-chunk-31"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-29" style="background:;">
+  <article data-timings="">
+    <p><img src="assets/fig/unnamed-chunk-32-1.png" alt="plot of chunk unnamed-chunk-32"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+    <slide class="backdrop"></slide>
+  </slides>
+  <div class="pagination pagination-small" id='io2012-ptoc' style="display:none;">
+    <ul>
+      <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=1 title='Geographic Information System'>
+         1
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=2 title='Packages'>
+         2
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=3 title='Load spatial data into R'>
+         3
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=4 title='Load spatial data into R'>
+         4
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=5 title='Load spatial data into R'>
+         5
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=6 title='Load spatial data into R'>
+         6
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=7 title='Load spatial data into R'>
+         7
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=8 title='Coordinate Reference System'>
+         8
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=9 title='Coordinate Reference System'>
+         9
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=10 title='Coordinate Reference System'>
+         10
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=11 title='Coordinate Reference System'>
+         11
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=12 title='Coordinate Reference System'>
+         12
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=13 title='Projections'>
+         13
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=14 title='Projections'>
+         14
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=15 title='Projections'>
+         15
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=16 title='Area Calculation'>
+         16
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=17 title='Area Calculation'>
+         17
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=18 title='Buffer'>
+         18
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=19 title='Buffer'>
+         19
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=20 title='Intersections (gIntersects)'>
+         20
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=21 title='Intersections (gIntersects)'>
+         21
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=22 title='Intersections (gIntersects)'>
+         22
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=23 title='Intersections (gIntersects)'>
+         23
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=24 title='Intersections (gIntersects)'>
+         24
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=25 title='Intersections (gIntersection)'>
+         25
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=26 title='Intersections'>
+         26
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=27 title='Intersections (gIntersects)'>
+         27
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=28 title='Intersections (gIntersection)'>
+         28
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=29 title=''>
+         29
+      </a>
+    </li>
+  </ul>
+  </div>  <!--[if IE]>
+    <script 
+      src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js">  
+    </script>
+    <script>CFInstall.check({mode: 'overlay'});</script>
+  <![endif]-->
+</body>
+  <!-- Load Javascripts for Widgets -->
+  
+  <!-- LOAD HIGHLIGHTER JS FILES -->
+  <script src="libraries/highlighters/highlight.js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <!-- DONE LOADING HIGHLIGHTER JS FILES -->
+   
+  </html>
